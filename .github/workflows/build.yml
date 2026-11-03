@@ -16,33 +16,33 @@ jobs:
           distribution: 'temurin'
           java-version: '11'
 
-      - name: Setup Compatible Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '7.4.2'
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Create Mock google-services.json
+      - name: Auto-generate google-services.json
         run: |
+          # Detect package name from AndroidManifest.xml or fallback
+          PKG=$(grep -oP 'package="\K[^"]+' app/src/main/AndroidManifest.xml 2>/dev/null || echo "com.devdutt.photoviewer")
           mkdir -p app
-          cat << 'EOF' > app/google-services.json
+          cat << EOF > app/google-services.json
           {
             "project_info": {
-              "project_number": "000000000000",
-              "project_id": "photo-viewer-dummy",
-              "storage_bucket": "photo-viewer-dummy.appspot.com"
+              "project_number": "123456789012",
+              "project_id": "dummy-project",
+              "storage_bucket": "dummy-project.appspot.com"
             },
             "client": [
               {
                 "client_info": {
-                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+                  "mobilesdk_app_id": "1:123456789012:android:abcdef1234567890",
                   "android_client_info": {
-                    "package_name": "com.devdutt.photoviewer"
+                    "package_name": "$PKG"
                   }
                 },
                 "oauth_client": [],
                 "api_key": [
                   {
-                    "current_key": "dummy_key_for_compilation"
+                    "current_key": "dummy_api_key_for_compilation"
                   }
                 ],
                 "services": {
@@ -56,11 +56,17 @@ jobs:
           }
           EOF
 
-      - name: Build Debug APK
-        run: gradle assembleDebug --stacktrace
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '7.3.3'
 
-      - name: Upload APK Artifact
+      - name: Build Debug APK
+        run: gradle assembleDebug --no-daemon
+
+      - name: Upload APK
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: PhotoViewer-APK
-          path: "**/build/outputs/apk/debug/*.apk"
+          path: "**/build/outputs/apk/**/*.apk"
